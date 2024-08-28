@@ -2,76 +2,240 @@ import java.io.*;
 import java.util.*;
 
 public class Main {
+    static Word2Vec model = null;
     public static void main(String[] args) throws Exception {
-        clear();
-        //load corpus from file corpus.txt (read as one string)
-        BufferedReader reader = new BufferedReader(new FileReader("corpus.txt"));
-        StringBuilder corpus = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            corpus.append(line);
-        }
-        reader.close();
-
-        //word2vec parameters
-        int dimensions = 500;
-        int windowSize = 2;
-        int minFrequency = 5;
-
-        //create word2vec model
-        Word2Vec model = new Word2Vec(Word2Vec.ModelType.CBOW, corpus.toString(), minFrequency, windowSize, dimensions);
-        model.getNetwork().displayAccuracy = true;
-
-        //training parameters
-        int epochs = 10;
-        double learningRate = 0.001;
-
-        //train model
-        model.train(epochs, learningRate);
-        //print accuracy
-        System.out.println("Accuracy: " + model.accuracy() * 100 + "%");
-        //save model
-        NeuralNetwork.Save(model.getNetwork(), "Word2Vec.model");
-
-        //evaluate model (take user input)
-        Scanner scanner = new Scanner(System.in);
-        while (true) {
-            try {
-                //exit or continue
-                System.out.println();
-                System.out.println("Press enter to continue or type 'exit' to exit");
-                String input = scanner.nextLine();
-                if (input.equals("exit")) {
-                    break;
+        ConsoleTool console = new ConsoleTool(System.in, System.out, "Word2Vec Console\n-=-=-=-=-=-=-=-=-=-=-=-=-=-=-");
+        console.addCommand("clear", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                console.Clear();
+            }
+        });
+        console.addCommand("exit", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                console.Output("Exiting...");
+                console.finish();
+                System.exit(0);
+            }
+        });
+        console.addCommand("create", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                //validate arguments
+                if (arguments.length != 5) {
+                    console.Output("Usage: create <modelType> <corpus> <minFrequency> <windowSize> <dimensions>");
+                    return;
                 }
-                System.out.println("Enter words as input (separated by spaces):");
-                String[] words = model.cleanText(scanner.nextLine()).split(" ");
-                //how many words to predict
-                System.out.println("Enter number of words to predict:");
-                int numWords = scanner.nextInt();
-                scanner.nextLine();
-                //print predictions with probabilities beside them
-                String[] predictions = model.predict(numWords, words);
-                if(predictions[0].equals("Error")) {
-                    continue;
+                if (!arguments[0].equals("CBOW") && !arguments[0].equals("SKIPGRAM")) {
+                    console.Output("Invalid model type. Choose either CBOW or SKIPGRAM");
+                    return;
                 }
-                System.out.println("Predictions:");
+                File file = new File(arguments[1]);
+                if (!file.exists()) {
+                    console.Output("File not found");
+                    return;
+                }
+                Word2Vec.progressBar(15, "Initializing Word2Vec model ", 0, 4, "parsing corpus text...");
+                String corpus = "";
+                try {
+                    BufferedReader bf = new BufferedReader(new FileReader(file));
+                    String line;
+                    while ((line = bf.readLine()) != null) {
+                        corpus += line + " ";
+                    }
+                    bf.close();
+                } catch (Exception e) {
+                    console.Output("Error reading file");
+                    return;
+                }
+                if(corpus.length() == 0) {
+                    console.Output("Empty file");
+                    return;
+                }
+                if (Integer.parseInt(arguments[2]) < 1) {
+                    console.Output("Minimum word frequency must at least 1");
+                    return;
+                }
+                if (Integer.parseInt(arguments[3]) < 1) {
+                    console.Output("Window size must at least 1");
+                    return;
+                }
+                if (Integer.parseInt(arguments[4]) < 1) {
+                    console.Output("Dimensions must at least 1");
+                    return;
+                }
+
+                Word2Vec.ModelType modelType = Word2Vec.ModelType.valueOf(arguments[0]);
+                model = new Word2Vec(modelType, corpus, Integer.parseInt(arguments[2]), Integer.parseInt(arguments[3]), Integer.parseInt(arguments[4]));
+                console.Output("Model created");
+            }
+        });
+        console.addCommand("train", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                //validate arguments
+                if (arguments.length != 2) {
+                    console.Output("Usage: train <epochs> <learningRate>");
+                    return;
+                }
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                if (Integer.parseInt(arguments[0]) < 1) {
+                    console.Output("Epochs must at least 1");
+                    return;
+                }
+                if (Double.parseDouble(arguments[1]) <= 0) {
+                    console.Output("Learning rate must be greater than 0");
+                    return;
+                }
+
+                model.train(Integer.parseInt(arguments[0]), Double.parseDouble(arguments[1]));
+                console.Output("Model trained");
+            }
+        });
+        console.addCommand("accuracy", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                console.Output("Accuracy: " + model.accuracy() * 100 + "%");
+            }
+        });
+        console.addCommand("save", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                if (arguments.length != 1) {
+                    console.Output("Usage: save <filename>");
+                    return;
+                }
+                model.Save(arguments[0]);
+                console.Output("Model saved");
+            }
+        });
+        console.addCommand("load", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (arguments.length != 1) {
+                    console.Output("Usage: load <filename>");
+                    return;
+                }
+                model = Word2Vec.Load(arguments[0]);
+                if (model == null) {
+                    console.Output("Error loading model");
+                    return;
+                }
+                console.Output("Model loaded");
+            }
+        });
+        console.addCommand("predict", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                if (arguments.length < 1) {
+                    console.Output("Usage: predict <words separated by spaces>");
+                    return;
+                }
+                String[] words = model.cleanText(String.join(" ", arguments)).split(" ");
+                //validate words
+                for(String word : words) {
+                    if(!model.isWord(word)) {
+                        console.Output("Word not found in vocabulary: " + word);
+                        return;
+                    }
+                }
+                String[] predictions = model.predict(5, words);
+                if (predictions[0].equals("Error")) {
+                    console.Output("Error predicting words");
+                    return;
+                }
+                console.Output("Predictions:");
                 for (String prediction : predictions) {
                     int index = model.wordIndex(prediction);
-                    double probability = model.getNetwork().GetNeurons()[model.getNetwork().GetNeurons().length - 1][index];
+                    double probability = model.getProbabilities()[index];
                     probability = Math.round(probability * 10000.0) / 100.0;
-                    System.out.println(prediction + " - " + probability + "%");
+                    console.Output(prediction + " - " + probability + "%");
                 }
-            } catch (Exception e) {
-                System.out.println("Invalid input");
             }
-        }
-        scanner.close();
-    }
-
-    static void clear() {
-        //clear console
-        System.out.print("\033[H\033[2J");
-        System.out.flush();
+        });
+        console.addCommand("vocab", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                console.Output("Vocabulary:");
+                String[] vocabulary = model.getVocabulary();
+                console.Output(vocabulary);
+                console.Output("Total words: " + vocabulary.length);
+            }
+        });
+        console.addCommand("help", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                // if no arguments are provided, print general help, otherwise print help for the specific command
+                if (arguments.length == 0) {
+                    console.Output("Commands:");
+                    console.Output("create <modelType> <corpus> <minFrequency> <windowSize> <dimensions> - Create a new Word2Vec model");
+                    console.Output("train <epochs> <learningRate> - Train the model");
+                    console.Output("accuracy - Display the accuracy of the model");
+                    console.Output("save <filename> - Save the model to a file");
+                    console.Output("load <filename> - Load the model from a file");
+                    console.Output("predict <words> - Predict the next words");
+                    console.Output("vocab - Display the vocabulary of the model");
+                    console.Output("clear - Clear the console");
+                    console.Output("exit - Exit the console");
+                } else {
+                    String command = arguments[0];
+                    switch (command) {
+                        case "create":
+                            console.Output(
+                                    "create <modelType> <corpus> <minFrequency> <windowSize> <dimensions> - Create a new Word2Vec model");
+                            console.Output("modelType: CBOW or SKIPGRAM");
+                            console.Output("corpus: Path to the corpus file");
+                            console.Output("minFrequency: Minimum word frequency");
+                            console.Output("windowSize: Window size");
+                            console.Output("dimensions: Number of dimensions");
+                            break;
+                        case "train":
+                            console.Output("train <epochs> <learningRate> - Train the model");
+                            console.Output("epochs: Number of epochs");
+                            console.Output("learningRate: Learning rate");
+                            break;
+                        case "accuracy":
+                            console.Output("accuracy - Display the accuracy of the model");
+                            break;
+                        case "save":
+                            console.Output("save <filename> - Save the model to a file");
+                            console.Output("filename: Name of the file to save the model to");
+                            break;
+                        case "load":
+                            console.Output("load <filename> - Load the model from a file");
+                            console.Output("filename: Name of the file to load the model from");
+                            break;
+                        case "predict":
+                            console.Output("predict <numWords> <words> - Predict the next words");
+                            console.Output("numWords: Number of words to predict");
+                            console.Output("words: Words to predict from");
+                            break;
+                        case "vocab":
+                            console.Output("vocab - Display the vocabulary of the model");
+                            break;
+                        case "clear":
+                            console.Output("clear - Clear the console");
+                            break;
+                        case "exit":
+                            console.Output("exit - Exit the console");
+                            break;
+                        default:
+                            console.Output("Command not found");
+                            break;
+                    }
+                }
+            }
+        });
+        console.start();
     }
 }

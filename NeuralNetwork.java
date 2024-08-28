@@ -43,6 +43,13 @@ public class NeuralNetwork implements Serializable {
 	//whether or not to display accuracy while training (for classification models)
 	public boolean displayAccuracy = false;
 
+	//extra variables for word2vec data
+	public String modelType;
+	public int minFrequency;
+	public int windowSize;
+	public int dimensions;
+	public String corpus;
+
 	// Regularization type
 	public static enum RegularizationType {
 		NONE,
@@ -283,7 +290,7 @@ public class NeuralNetwork implements Serializable {
 	protected Random r;
 
 	//takes in int[] for number of neurons in each layer and string[] for activations of each layer
-	public NeuralNetwork(int[] topology, String[] active) {
+	public NeuralNetwork(int[] topology, String[] active, String modelType, int minFrequency, int windowSize, int dimensions, String corpus) {
 		int maxLayerSize = max(topology);
 		neuronsPerLayer = topology.clone();
 		numLayers = topology.length;
@@ -292,12 +299,18 @@ public class NeuralNetwork implements Serializable {
 		biases = new double[numLayers][maxLayerSize];
 		weights = new double[numLayers][maxLayerSize][maxLayerSize];
 		activations = active.clone();
+
+		this.modelType = modelType;
+		this.minFrequency = minFrequency;
+		this.windowSize = windowSize;
+		this.dimensions = dimensions;
+		this.corpus = corpus;
 		r = new Random();
 	}
 
 	public NeuralNetwork(int[] topology, String[] active, RegularizationType regularizationType,
-			double regularizationStrength) {
-		this(topology, active);
+			double regularizationStrength, String modelType, int minFrequency, int windowSize, int dimensions, String corpus) {
+		this(topology, active, modelType, minFrequency, windowSize, dimensions, corpus);
 		//set regularization
 		this.regularizationType = regularizationType;
 		lambda = regularizationStrength;
@@ -971,7 +984,8 @@ public class NeuralNetwork implements Serializable {
 	}
 
 	public NeuralNetwork clone() {
-		NeuralNetwork clone = new NeuralNetwork(neuronsPerLayer, activations, regularizationType, lambda);
+		NeuralNetwork clone = new NeuralNetwork(neuronsPerLayer, activations, regularizationType, lambda, modelType,
+				minFrequency, windowSize, dimensions, corpus);
 		clone.biases = biases.clone();
 		clone.weights = weights.clone();
 		return clone;

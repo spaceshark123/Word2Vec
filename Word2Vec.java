@@ -1,5 +1,7 @@
 import java.util.*;
 import java.io.*;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Word2Vec {
     NeuralNetwork net;
@@ -19,20 +21,25 @@ public class Word2Vec {
     }
     
     public Word2Vec(ModelType modelType, String corpus, int minFrequency, int windowSize, int dimensions) {
+        Word2Vec.progressBar(15, "Initializing Word2Vec model ", 1, 4, "cleaning corpus text...");
         this.corpus = cleanText(corpus);
-        System.out.println("cleaned corpus: " + this.corpus);
+        Word2Vec.progressBar(15, "Initializing Word2Vec model ", 2, 4, "generating vocabulary...");
         this.vocab = generateVocab(this.corpus, minFrequency);
-        //print the vocabulary
-        System.out.println("Vocabulary: " + vocab);
         this.numWords = vocab.size();
         this.windowSize = windowSize;
         this.dimensions = dimensions;
         this.modelType = modelType;
 
+        Word2Vec.progressBar(15, "Initializing Word2Vec model ", 3, 4, "creating neural network...");
         this.net = new NeuralNetwork(new int[] { numWords, dimensions, numWords },
-                new String[] { "linear", "linear", "softmax" });
+                new String[] { "linear", "linear", "softmax" }, modelType.toString(), minFrequency, windowSize, dimensions, corpus);
         //init network with random weights and 0 biases
         this.net.Init(0);
+        Word2Vec.progressBar(15, "Initializing Word2Vec model ", 4, 4, "done                       ");
+    }
+
+    public String[] getVocabulary() {
+        return vocab.keySet().toArray(new String[0]);
     }
 
     public NeuralNetwork getNetwork() {
@@ -44,16 +51,44 @@ public class Word2Vec {
     }
 
     public double accuracy() {
-        //use training data to calculate accuracy
-        double correct = 0;
-        for (int i = 0; i < inputs.size(); i++) {
-            double[] output = net.Evaluate(inputs.get(i));
-            int maxIndex = maxIndex(output);
-            if (maxIndex == maxIndex(outputs.get(i))) {
-                correct++;
-            }
+        // Generate training data (input and outputs)
+        if (inputs == null || outputs == null) {
+            generateTrainingData();
+            System.out.println("Training data size: " + inputs.size());
         }
-        return correct / inputs.size();
+    
+        // Use an atomic integer to track progress
+        AtomicInteger progress = new AtomicInteger(0);
+        AtomicInteger correct = new AtomicInteger(0);
+    
+        // Get the size of the input data
+        int size = inputs.size();
+    
+        // Use ForkJoinPool to parallelize the task
+        ForkJoinPool pool = new ForkJoinPool();
+        pool.submit(() -> {
+            inputs.parallelStream().forEach(input -> {
+                // Get the current index
+                int index = progress.getAndIncrement();
+    
+                // Calculate output and check if it's correct
+                double[] output = net.Evaluate(input);
+                int maxIndex = maxIndex(output);
+    
+                if (maxIndex == maxIndex(outputs.get(index))) {
+                    correct.incrementAndGet();
+                }
+    
+                // Update the progress bar
+                Word2Vec.progressBar(15, "Calculating accuracy ", progress.get(), size, "");
+            });
+        }).join();
+    
+        // Ensure the progress bar is fully updated
+        Word2Vec.progressBar(15, "Calculating accuracy ", size, size, "");
+    
+        // Return the calculated accuracy
+        return (double) correct.get() / size;
     }
 
     public String[] predict(int numPredictions, String... words) {
@@ -150,14 +185,17 @@ public class Word2Vec {
                     }
                 }
             }
+            Word2Vec.progressBar(15, "Generating training data ", i, numWords, "");
         }
+        Word2Vec.progressBar(15, "Generating training data ", numWords, numWords, "");
     }
 
-    // train the network
+    // trains using adam optimizer with default beta1=0.9, beta2=0.999 and mini-batches (batchSize=1)
     public void train(int epochs, double learningRate) {
         //generate training data (input and outputs)
         if(inputs == null || outputs == null) {
             generateTrainingData();
+            System.out.println("Training data size: " + inputs.size());
         }
         //dummy test data (not used)
         double[][] testInputs = new double[][] {
@@ -170,6 +208,7 @@ public class Word2Vec {
         //train the network
         NeuralNetwork.TrainingCallback callback = new ChartUpdater(epochs);
         int batchSize = 1;
+        net.displayAccuracy = true;
         net.Train(inputs.toArray(new double[0][]), outputs.toArray(new double[0][]), testInputs, testOutputs, epochs,
                 learningRate, batchSize, "categorical_crossentropy", 0,
                 new NeuralNetwork.OptimizerType.Adam(0.9, 0.999), callback);
@@ -340,4 +379,46 @@ public class Word2Vec {
         }
         return diff;
     }
+
+    public void Save(String filename) {
+        try {
+            NeuralNetwork.Save(net, filename);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static Word2Vec Load(String filename) {
+        NeuralNetwork network = NeuralNetwork.Load(filename);
+        if (network == null) {
+            return null;
+        }
+        Word2Vec.ModelType modelType = Word2Vec.ModelType.valueOf(network.modelType);
+        int minFrequency = network.minFrequency;
+        int windowSize = network.windowSize;
+        int dimensions = network.dimensions;
+        String corpus = network.corpus;
+        Word2Vec model = new Word2Vec(modelType, corpus, minFrequency, windowSize, dimensions);
+        model.net = network;
+
+        return model;
+    }
+
+    // check if a word is in the vocabulary
+    public boolean isWord(String word) {
+        return vocab.containsKey(word);
+    }
+
+    public static void progressBar(int width, String title, int current, int total, String subtitle) {
+		String filled = "█";
+		String unfilled = "░";
+		double fill = (double) current / total;
+		if (fill >= 0 && fill <= 1) {
+			//set progress bar
+			int fillAmount = (int) Math.ceil(fill * width);
+			StringBuilder bar = new StringBuilder();
+			bar.append(title).append(": ").append(filled.repeat(fillAmount)).append(unfilled.repeat(width - fillAmount)).append(" ").append(current).append("/").append(total).append(" ").append(subtitle).append(" ").append("\r");
+			System.out.print(bar.toString());
+		}
+	}
 }
