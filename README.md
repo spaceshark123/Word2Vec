@@ -2,7 +2,7 @@
 
 # Java Word2Vec
 
-This is a Java implementation of the popular Word2Vec algorithm for converting words into multidimensional vectors in embedding space. It supports both CBOW (Continuous Bag of Words) and Skip-gram protocols for predicting a word from context words or vice versa, as well as direct vector operations like cosine similarity and embedding vector arithmetic to manipulate words. The included `Word2Vec` class also has several useful helper functions like finding similar words, cleaning/reading from a corpus text, and training the neural network with customizable parameters. It uses a dependency on my java __[NeuralNetwork](https://github.com/spaceshark123/NeuralNetwork)__ project to act as the base for the actual prediction and vectorization process.
+This is a Java implementation of the popular Word2Vec algorithm for converting words into multidimensional vectors in embedding space. It supports both CBOW (Continuous Bag of Words) and Skip-gram protocols for predicting a word from context words or vice versa, as well as direct vector operations like cosine similarity and embedding vector arithmetic to manipulate words. The entire program has a CLI (console line interface) to interact with and dynamically experiment with Word2Vec without touching a single line of code. The included `Word2Vec` class also has several useful helper functions like finding similar words, cleaning/reading from a corpus text, and training the neural network with customizable parameters. It uses a dependency on my java __[NeuralNetwork](https://github.com/spaceshark123/NeuralNetwork)__ project to act as the base for the actual prediction and vectorization process and my java __[ConsoleTool](https://github.com/spaceshark123/ConsoleTool)__ project to create a CLI wrapper for the application.
 
 ## Table of Contents
 
@@ -23,6 +23,7 @@ These embeddings can be used for various natural language processing tasks, such
 ## Key Features
 
 - __CBOW and Skip-gram Support__: Implements both Continuous Bag of Words and Skip-gram models to allow flexible training and testing.
+- __User-friendly Console Interface__: Everything is wrapped in an easy-to-use console interface using commands to perform tasks, similar to a shell terminal. This allows for no-code experimentation with the Word2Vec embedding model.
 - __Customizable Parameters__: Allows users to adjust parameters such as learning rate, embedding size, context window size, minimum word frequency, and number of training epochs.
 - __Vector Operations__: Supports vector arithmetic and cosine similarity calculations to find relationships between words.
 - __Corpus Processing__: Includes functionality to read, clean, and preprocess text corpora, handling tokenization and normalization.
@@ -57,6 +58,9 @@ String[] similarWords = model.findSimilarWords("word", topN);
 
 double[] vector = {...};
 String[] similarWords2 = model.findSimilarWords(vector, topN);
+
+String closestWord = model.getClosestWord("word");
+String closestWord2 = model.getClosestWord(vector);
 ```
 
 4. __Vector Arithmetic__: Perform operations like word analogies using vector arithmetic.
@@ -66,7 +70,7 @@ double[] kingVector = model.vector("king");
 double[] manVector = model.vector("man");
 double[] womanVector = model.vector("woman");
 double[] queenVector = model.add(model.subtract(kingVector, manVector), womanVector); // king - man + woman = queen
-String queenWord = findSimilarWords(queenVector, 1); // gets the closest word that matches this new embedding vector
+String queenWord = getClosestWord(queenVector); // gets the closest word that matches this new embedding vector
 ```
 
 5. __Comparing Words__: Compare the similarity of 2 words using cosine similarity in the similarity() function

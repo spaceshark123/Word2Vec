@@ -151,6 +151,14 @@ public class Word2Vec {
         return closestWords;
     }
 
+    public String getClosestWord(String word) {
+        return findSimilarWords(word, 1)[0];
+    }
+
+    public String getClosestWord(double[] vector) {
+        return findSimilarWords(vector, 1)[0];
+    }
+
     // generate training data for the network
     public void generateTrainingData() {
         String[] words = corpus.split(" ");

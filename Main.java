@@ -173,6 +173,116 @@ public class Main {
                 console.Output("Total words: " + vocabulary.length);
             }
         });
+        console.addCommand("similarity", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                if (arguments.length != 2) {
+                    console.Output("Usage: similarity <word1> <word2>");
+                    return;
+                }
+                if (!model.isWord(arguments[0])) {
+                    console.Output("Word not found in vocabulary: " + arguments[0]);
+                    return;
+                }
+                if (!model.isWord(arguments[1])) {
+                    console.Output("Word not found in vocabulary: " + arguments[1]);
+                    return;
+                }
+                double similarity = model.similarity(arguments[0], arguments[1]);
+                console.Output("Similarity: " + similarity);
+            }
+        });
+        console.addCommand("vector", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                if (arguments.length != 1) {
+                    console.Output("Usage: vector <word>");
+                    return;
+                }
+                if (!model.isWord(arguments[0])) {
+                    console.Output("Word not found in vocabulary: " + arguments[0]);
+                    return;
+                }
+                double[] vector = model.getVector(arguments[0]);
+                console.Output(vector);
+            }
+        });
+        //command to get the 5 most similar words to a given word (not called mostSimilar or similar)
+        console.addCommand("findsimilar", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                if (arguments.length != 1) {
+                    console.Output("Usage: findsimilar <word>");
+                    return;
+                }
+                if (!model.isWord(arguments[0])) {
+                    console.Output("Word not found in vocabulary: " + arguments[0]);
+                    return;
+                }
+                String[] similar = model.similar(arguments[0], 5);
+                console.Output("Similar words:");
+                console.Output(similar);
+            }
+        });
+        //command to add 2 words and get the closest word to the result
+        console.addCommand("add", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                if (arguments.length != 2) {
+                    console.Output("Usage: add <word1> <word2>");
+                    return;
+                }
+                if (!model.isWord(arguments[0])) {
+                    console.Output("Word not found in vocabulary: " + arguments[0]);
+                    return;
+                }
+                if (!model.isWord(arguments[1])) {
+                    console.Output("Word not found in vocabulary: " + arguments[1]);
+                    return;
+                }
+                double[] vector1 = model.getVector(arguments[0]);
+                double[] vector2 = model.getVector(arguments[1]);
+                double[] result = model.add(vector1, vector2);
+                console.Output(model.getClosestWord(result));
+            }
+        });
+        //command to subtract 2 words and get the closest word to the result
+        console.addCommand("subtract", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                if (arguments.length != 2) {
+                    console.Output("Usage: subtract <word1> <word2>");
+                    return;
+                }
+                if (!model.isWord(arguments[0])) {
+                    console.Output("Word not found in vocabulary: " + arguments[0]);
+                    return;
+                }
+                if (!model.isWord(arguments[1])) {
+                    console.Output("Word not found in vocabulary: " + arguments[1]);
+                    return;
+                }
+                double[] vector1 = model.getVector(arguments[0]);
+                double[] vector2 = model.getVector(arguments[1]);
+                double[] result = model.subtract(vector1, vector2);
+                console.Output(model.getClosestWord(result));
+            }
+        });
         console.addCommand("help", new ConsoleTool.Command() {
             public void execute(String... arguments) {
                 // if no arguments are provided, print general help, otherwise print help for the specific command
@@ -185,6 +295,11 @@ public class Main {
                     console.Output("load <filename> - Load the model from a file");
                     console.Output("predict <words> - Predict the next words");
                     console.Output("vocab - Display the vocabulary of the model");
+                    console.Output("similarity <word1> <word2> - Display the cosine similarity between two words");
+                    console.Output("vector <word> - Display the embedding vector of a word");
+                    console.Output("findsimilar <word> - Display the 5 most similar words to a word");
+                    console.Output("add <word1> <word2> - Add two words and display the closest word to the result");
+                    console.Output("subtract <word1> <word2> - Subtract two words and display the closest word to the result");
                     console.Output("clear - Clear the console");
                     console.Output("exit - Exit the console");
                 } else {
@@ -222,6 +337,29 @@ public class Main {
                             break;
                         case "vocab":
                             console.Output("vocab - Display the vocabulary of the model");
+                            break;
+                        case "similarity":
+                            console.Output("similarity <word1> <word2> - Display the cosine similarity between two words");
+                            console.Output("word1: First word");
+                            console.Output("word2: Second word");
+                            break;
+                        case "vector":
+                            console.Output("vector <word> - Display the embedding vector of a word");
+                            console.Output("word: Word to get the vector of");
+                            break;
+                        case "findsimilar":
+                            console.Output("findsimilar <word> - Display the 5 most similar words to a word");
+                            console.Output("word: Word to find similar words to");
+                            break;
+                        case "add":
+                            console.Output("add <word1> <word2> - Add two words and display the closest word to the result");
+                            console.Output("word1: First word");
+                            console.Output("word2: Second word");
+                            break;
+                        case "subtract":
+                            console.Output("subtract <word1> <word2> - Subtract two words and display the closest word to the result");
+                            console.Output("word1: First word");
+                            console.Output("word2: Second word");
                             break;
                         case "clear":
                             console.Output("clear - Clear the console");
