@@ -209,7 +209,7 @@ public class Main {
                     console.Output("Word not found in vocabulary: " + arguments[0]);
                     return;
                 }
-                double[] vector = model.getVector(arguments[0]);
+                double[] vector = model.vector(arguments[0]);
                 console.Output(vector);
             }
         });
@@ -228,7 +228,7 @@ public class Main {
                     console.Output("Word not found in vocabulary: " + arguments[0]);
                     return;
                 }
-                String[] similar = model.similar(arguments[0], 5);
+                String[] similar = model.findSimilarWords(arguments[0], 5);
                 console.Output("Similar words:");
                 console.Output(similar);
             }
@@ -252,8 +252,8 @@ public class Main {
                     console.Output("Word not found in vocabulary: " + arguments[1]);
                     return;
                 }
-                double[] vector1 = model.getVector(arguments[0]);
-                double[] vector2 = model.getVector(arguments[1]);
+                double[] vector1 = model.vector(arguments[0]);
+                double[] vector2 = model.vector(arguments[1]);
                 double[] result = model.add(vector1, vector2);
                 console.Output(model.getClosestWord(result));
             }
@@ -277,8 +277,8 @@ public class Main {
                     console.Output("Word not found in vocabulary: " + arguments[1]);
                     return;
                 }
-                double[] vector1 = model.getVector(arguments[0]);
-                double[] vector2 = model.getVector(arguments[1]);
+                double[] vector1 = model.vector(arguments[0]);
+                double[] vector2 = model.vector(arguments[1]);
                 double[] result = model.subtract(vector1, vector2);
                 console.Output(model.getClosestWord(result));
             }
