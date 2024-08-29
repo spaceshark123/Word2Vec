@@ -64,7 +64,8 @@ public class Main {
                 }
 
                 Word2Vec.ModelType modelType = Word2Vec.ModelType.valueOf(arguments[0]);
-                model = new Word2Vec(modelType, corpus, Integer.parseInt(arguments[2]), Integer.parseInt(arguments[3]), Integer.parseInt(arguments[4]));
+                model = new Word2Vec(modelType, corpus, Integer.parseInt(arguments[2]), Integer.parseInt(arguments[3]),
+                        Integer.parseInt(arguments[4]));
                 console.Output("Model created");
             }
         });
@@ -98,7 +99,10 @@ public class Main {
                     console.Output("Model not created");
                     return;
                 }
-                console.Output("Accuracy: " + model.accuracy() * 100 + "%");
+                double percent = model.accuracy() * 100;
+                //round to 3 decimal places
+                percent = Math.round(percent * 1000.0) / 1000.0;
+                console.Output("Accuracy: " + percent + "%");
             }
         });
         console.addCommand("save", new ConsoleTool.Command() {
@@ -283,6 +287,48 @@ public class Main {
                 console.Output(model.getClosestWord(result));
             }
         });
+        //command to get training data of the model
+        console.addCommand("trainingdata", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                console.Output("Training data:");
+                List<double[]> inputs = model.getInputs();
+                List<double[]> outputs = model.getOutputs();
+                if(inputs == null || outputs == null) {
+                    console.Output("No training data");
+                    model.generateTrainingData();
+                    return;
+                }
+                // the model.oneHotWord function is used to get the words from the one-hot encoded vectors
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < inputs.size(); i++) {
+                    sb.append(model.oneHotWord(inputs.get(i)));
+                    sb.append(" -> ");
+                    sb.append(model.oneHotWord(outputs.get(i)));
+                    sb.append("\n");
+                }
+                console.Output(sb.toString());
+                console.Output("Total training data: " + inputs.size());
+            }
+        });
+        console.addCommand("info", new ConsoleTool.Command() {
+            public void execute(String... arguments) {
+                if (model == null) {
+                    console.Output("Model not created");
+                    return;
+                }
+                console.Output(model.getNetwork().toString());
+                console.Output("--------------------");
+                console.Output("Model info:");
+                console.Output("Model type: " + model.getModelType());
+                console.Output("Vocabulary size: " + model.getVocabulary().length);
+                console.Output("Window size: " + model.getWindowSize());
+                console.Output("Dimensions: " + model.getDimensions());
+            }
+        });
         console.addCommand("help", new ConsoleTool.Command() {
             public void execute(String... arguments) {
                 // if no arguments are provided, print general help, otherwise print help for the specific command
@@ -299,7 +345,10 @@ public class Main {
                     console.Output("vector <word> - Display the embedding vector of a word");
                     console.Output("findsimilar <word> - Display the 5 most similar words to a word");
                     console.Output("add <word1> <word2> - Add two words and display the closest word to the result");
-                    console.Output("subtract <word1> <word2> - Subtract two words and display the closest word to the result");
+                    console.Output(
+                            "subtract <word1> <word2> - Subtract two words and display the closest word to the result");
+                    console.Output("trainingdata - Display the training data of the model");
+                    console.Output("info - Display the model info");
                     console.Output("clear - Clear the console");
                     console.Output("exit - Exit the console");
                 } else {
@@ -360,6 +409,12 @@ public class Main {
                             console.Output("subtract <word1> <word2> - Subtract two words and display the closest word to the result");
                             console.Output("word1: First word");
                             console.Output("word2: Second word");
+                            break;
+                        case "trainingdata":
+                            console.Output("trainingdata - Display the training data of the model");
+                            break;
+                        case "info":
+                            console.Output("info - Display the model info");
                             break;
                         case "clear":
                             console.Output("clear - Clear the console");

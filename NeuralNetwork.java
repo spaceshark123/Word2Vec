@@ -42,6 +42,7 @@ public class NeuralNetwork implements Serializable {
 	public double clipThreshold = 1;
 	//whether or not to display accuracy while training (for classification models)
 	public boolean displayAccuracy = false;
+	public boolean enableBiases = true;
 
 	//extra variables for word2vec data
 	public String modelType;
@@ -324,14 +325,16 @@ public class NeuralNetwork implements Serializable {
 	public void Init(double biasSpread) {
 		ClearNeurons();
 		InitWeights();
-		InitBiases(biasSpread);
+		if(enableBiases)
+			InitBiases(biasSpread);
 	}
 
 	//initialize network with random starting values using a specified weight initialization method ('he' or 'xavier')
 	public void Init(String weightInitMethod, double biasSpread) {
 		ClearNeurons();
 		InitWeights(weightInitMethod);
-		InitBiases(biasSpread);
+		if(enableBiases)
+			InitBiases(biasSpread);
 	}
 
 	void InitWeights(String initMethod) {
@@ -666,7 +669,7 @@ public class NeuralNetwork implements Serializable {
         for (int layer = 1; layer < numLayers; layer++) {
             final int currentLayer = layer;  // Capture the current value of layer
             IntStream.range(0, neuronsPerLayer[currentLayer]).parallel().forEach(neuron -> {
-                double raw = biases[currentLayer][neuron];
+                double raw = enableBiases ? biases[currentLayer][neuron] : 0;
                 for (int prevNeuron = 0; prevNeuron < neuronsPerLayer[currentLayer - 1]; prevNeuron++) {
                     raw += weights[currentLayer][neuron][prevNeuron] * neurons[currentLayer - 1][prevNeuron];
                 }
@@ -699,7 +702,7 @@ public class NeuralNetwork implements Serializable {
         for (int layer = 1; layer < numLayers; layer++) {
             final int currentLayer = layer;  // Capture the current value of layer
             IntStream.range(0, neuronsPerLayer[currentLayer]).parallel().forEach(neuron -> {
-                double raw = biases[currentLayer][neuron];
+                double raw = enableBiases ? biases[currentLayer][neuron] : 0;
                 for (int prevNeuron = 0; prevNeuron < neuronsPerLayer[currentLayer - 1]; prevNeuron++) {
                     raw += weights[currentLayer][neuron][prevNeuron] * neurons[currentLayer - 1][prevNeuron];
                 }
@@ -1062,7 +1065,8 @@ public class NeuralNetwork implements Serializable {
 					System.out.println("Nan error in neuron gradient of last layer. try reducing the learning rate");
 					throw new ArithmeticException("NaN error");
 				}
-				biasGrad[layer][i] = 1 * neuronGradients[i];
+				if(enableBiases)
+					biasGrad[layer][i] = 1 * neuronGradients[i];
 				if (Double.isNaN(biasGrad[layer][i])) {
 					System.out.println("Nan error in bias of last layer. try reducing the learning rate");
 					throw new ArithmeticException("NaN error");
@@ -1099,7 +1103,8 @@ public class NeuralNetwork implements Serializable {
 				nextLayerWeightedSum[i] += nextLayerBackpropagate[j] * weights[layer + 1][j][i];
 			}
 			neuronGradients[i] = activate_der(neuronsRaw[layer][i], layer, i) * nextLayerWeightedSum[i];
-			biasGrad[layer][i] = 1 * nextLayerSum;
+			if(enableBiases)
+				biasGrad[layer][i] = 1 * nextLayerSum;
 			if (Double.isNaN(biasGrad[layer][i])) {
 				System.out.println("Nan error in bias. try reducing the learning rate");
 				throw new ArithmeticException("NaN error");
@@ -1263,7 +1268,8 @@ public class NeuralNetwork implements Serializable {
 				// Do weighted sum of gradients for average
 				for (int i = 1; i < numLayers; i++) {
 					for (int j = 0; j < neuronsPerLayer[i]; j++) {
-						avgBiasGradient[i][j] += thisBiasGradient[i][j] * weightedAvg;
+						if(enableBiases)
+							avgBiasGradient[i][j] += thisBiasGradient[i][j] * weightedAvg;
 						for (int k = 0; k < neuronsPerLayer[i - 1]; k++) {
 							avgWeightGradient[i][j][k] += thisWeightGradient[i][j][k] * weightedAvg;
 						}

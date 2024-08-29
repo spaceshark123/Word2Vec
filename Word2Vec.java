@@ -34,8 +34,21 @@ public class Word2Vec {
         this.net = new NeuralNetwork(new int[] { numWords, dimensions, numWords },
                 new String[] { "linear", "linear", "softmax" }, modelType.toString(), minFrequency, windowSize, dimensions, corpus);
         //init network with random weights and 0 biases
+        this.net.enableBiases = false;
         this.net.Init(0);
         Word2Vec.progressBar(15, "Initializing Word2Vec model ", 4, 4, "done                       ");
+    }
+
+    public int getWindowSize() {
+        return windowSize;
+    }
+
+    public int getDimensions() {
+        return dimensions;
+    }
+
+    public ModelType getModelType() {
+        return modelType;
     }
 
     public String[] getVocabulary() {
@@ -46,6 +59,15 @@ public class Word2Vec {
         return net;
     }
 
+    // return training data
+    public List<double[]> getInputs() {
+        return inputs;
+    }
+
+    public List<double[]> getOutputs() {
+        return outputs;
+    }
+
     public double[] evaluate(String... words) {
         return net.Evaluate(wordOneHot(words));
     }
@@ -54,7 +76,7 @@ public class Word2Vec {
         // Generate training data (input and outputs)
         if (inputs == null || outputs == null) {
             generateTrainingData();
-            System.out.println("Training data size: " + inputs.size());
+            //System.out.println("Training data size: " + inputs.size());
         }
     
         // Use an atomic integer to track progress
@@ -85,7 +107,8 @@ public class Word2Vec {
         }).join();
     
         // Ensure the progress bar is fully updated
-        Word2Vec.progressBar(15, "Calculating accuracy ", size, size, "");
+        if(progress.get() < size)
+            Word2Vec.progressBar(15, "Calculating accuracy ", size, size, "");
     
         // Return the calculated accuracy
         return (double) correct.get() / size;
@@ -139,6 +162,11 @@ public class Word2Vec {
         //calculate cosine similarity between the vector and all word vectors
         double[] similarities = new double[numWords];
         for (int i = 0; i < numWords; i++) {
+            //if same word, skip
+            if (indexWord(i).equals(word)) {
+                similarities[i] = -2;
+                continue;
+            }
             similarities[i] = similarity(vector(indexWord(i)), vector);
         }
         //return the top n words
@@ -164,14 +192,14 @@ public class Word2Vec {
         String[] words = corpus.split(" ");
         inputs = new ArrayList<>();
         outputs = new ArrayList<>();
-        for (int i = 0; i < numWords; i++) {
+        for (int i = 0; i < words.length; i++) {
             if (!vocab.containsKey(words[i])) {
                 continue;
             }
             String[] contextWords = new String[2 * windowSize];
             int index = 0;
             for (int j = i - windowSize; j <= i + windowSize; j++) {
-                if (j != i && j >= 0 && j < numWords && vocab.containsKey(words[j])) {
+                if (j != i && j >= 0 && j < words.length && vocab.containsKey(words[j])) {
                     contextWords[index] = words[j];
                     index++;
                 }
@@ -193,9 +221,9 @@ public class Word2Vec {
                     }
                 }
             }
-            Word2Vec.progressBar(15, "Generating training data ", i, numWords, "");
+            Word2Vec.progressBar(15, "Generating training data ", i, words.length, "");
         }
-        Word2Vec.progressBar(15, "Generating training data ", numWords, numWords, "");
+        Word2Vec.progressBar(15, "Generating training data ", words.length, words.length, "");
     }
 
     // trains using adam optimizer with default beta1=0.9, beta2=0.999 and mini-batches (batchSize=1)
@@ -203,7 +231,7 @@ public class Word2Vec {
         //generate training data (input and outputs)
         if(inputs == null || outputs == null) {
             generateTrainingData();
-            System.out.println("Training data size: " + inputs.size());
+            //System.out.println("Training data size: " + inputs.size());
         }
         //dummy test data (not used)
         double[][] testInputs = new double[][] {
@@ -244,6 +272,17 @@ public class Word2Vec {
         }
         return oneHot;
 
+    }
+
+    // go from a one-hot vector to a word (if there are multiple words, the one hot vector is the average of the one-hot vectors of the words, and return all the words)
+    public List<String> oneHotWord(double[] oneHot) {
+        List<String> words = new ArrayList<>();
+        for (int i = 0; i < numWords; i++) {
+            if (oneHot[i] > 0) {
+                words.add(indexWord(i));
+            }
+        }
+        return words;
     }
 
     //get the embedding vector of a word
@@ -421,12 +460,18 @@ public class Word2Vec {
 		String filled = "█";
 		String unfilled = "░";
 		double fill = (double) current / total;
-		if (fill >= 0 && fill <= 1) {
-			//set progress bar
-			int fillAmount = (int) Math.ceil(fill * width);
-			StringBuilder bar = new StringBuilder();
-			bar.append(title).append(": ").append(filled.repeat(fillAmount)).append(unfilled.repeat(width - fillAmount)).append(" ").append(current).append("/").append(total).append(" ").append(subtitle).append(" ").append("\r");
-			System.out.print(bar.toString());
-		}
+        if (fill >= 0 && fill <= 1) {
+            //set progress bar
+            int fillAmount = (int) Math.ceil(fill * width);
+            StringBuilder bar = new StringBuilder();
+            bar.append(title).append(": ").append(filled.repeat(fillAmount)).append(unfilled.repeat(width - fillAmount))
+                    .append(" ").append(current).append("/").append(total).append(" ").append(subtitle).append(" ");
+            if(current == total) {
+                bar.append("\n");
+            } else {
+                bar.append("\r");
+            }
+            System.out.print(bar.toString());
+        }
 	}
 }
