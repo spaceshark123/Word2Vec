@@ -72,7 +72,7 @@ public class Main {
         console.addCommand("train", new ConsoleTool.Command() {
             public void execute(String... arguments) {
                 //validate arguments
-                if (arguments.length != 2) {
+                if (arguments.length < 2) {
                     console.Output("Usage: train <epochs> <learningRate>");
                     return;
                 }
@@ -88,8 +88,12 @@ public class Main {
                     console.Output("Learning rate must be greater than 0");
                     return;
                 }
+                if(Integer.parseInt(arguments[2]) < 1) {
+                    console.Output("Batch size must be at least 1");
+                    return;
+                }
 
-                model.train(Integer.parseInt(arguments[0]), Double.parseDouble(arguments[1]));
+                model.train(Integer.parseInt(arguments[0]), Double.parseDouble(arguments[1]), Integer.parseInt(arguments[2]));
                 console.Output("Model trained");
             }
         });

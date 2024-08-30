@@ -80,38 +80,35 @@ public class Word2Vec {
         }
     
         // Use an atomic integer to track progress
-        AtomicInteger progress = new AtomicInteger(0);
-        AtomicInteger correct = new AtomicInteger(0);
+        int progress = 0;
+        int correct = 0;
     
         // Get the size of the input data
         int size = inputs.size();
     
-        // Use ForkJoinPool to parallelize the task
-        ForkJoinPool pool = new ForkJoinPool();
-        pool.submit(() -> {
-            inputs.parallelStream().forEach(input -> {
-                // Get the current index
-                int index = progress.getAndIncrement();
-    
-                // Calculate output and check if it's correct
-                double[] output = net.Evaluate(input);
-                int maxIndex = maxIndex(output);
-    
-                if (maxIndex == maxIndex(outputs.get(index))) {
-                    correct.incrementAndGet();
-                }
-    
-                // Update the progress bar
-                Word2Vec.progressBar(15, "Calculating accuracy ", progress.get(), size, "");
-            });
-        }).join();
+        for(int i = 0; i < size; i++) {
+            // Get the current index
+            int index = progress++;
+            double[] input = inputs.get(index);
+
+            // Calculate output and check if it's correct
+            double[] output = net.Evaluate(input);
+            int maxIndex = maxIndex(output);
+
+            if (maxIndex == maxIndex(outputs.get(index))) {
+                correct++;
+            }
+
+            // Update the progress bar
+            Word2Vec.progressBar(15, "Calculating accuracy ", progress, size, "");
+        }
     
         // Ensure the progress bar is fully updated
-        if(progress.get() < size)
+        if(progress < size)
             Word2Vec.progressBar(15, "Calculating accuracy ", size, size, "");
     
         // Return the calculated accuracy
-        return (double) correct.get() / size;
+        return (double) correct / size;
     }
 
     public String[] predict(int numPredictions, String... words) {
@@ -227,7 +224,7 @@ public class Word2Vec {
     }
 
     // trains using adam optimizer with default beta1=0.9, beta2=0.999 and mini-batches (batchSize=1)
-    public void train(int epochs, double learningRate) {
+    public void train(int epochs, double learningRate, int batchSize) {
         //generate training data (input and outputs)
         if(inputs == null || outputs == null) {
             generateTrainingData();
@@ -243,7 +240,7 @@ public class Word2Vec {
         System.out.println("Training data size: " + inputs.size());
         //train the network
         NeuralNetwork.TrainingCallback callback = new ChartUpdater(epochs);
-        int batchSize = 1;
+        //int batchSize = 1;
         net.displayAccuracy = true;
         net.Train(inputs.toArray(new double[0][]), outputs.toArray(new double[0][]), testInputs, testOutputs, epochs,
                 learningRate, batchSize, "categorical_crossentropy", 0,
@@ -252,26 +249,34 @@ public class Word2Vec {
 
     // one-hot encode a word or multiple words into a vocabulary vector
     public double[] wordOneHot(String... words) {
-        //take the average of the one-hot vectors of the words
-        double[] oneHot = new double[numWords];
-        if (words.length == 1) {
+        if(words.length == 0) {
+            //no words
+            return new double[numWords];
+        }
+        if(words.length == 1) {
             //one word
-            if(words[0] == null) {
-                return oneHot;
+            double[] oneHot = new double[numWords];
+            if (vocab.containsKey(words[0])) {
+                oneHot[wordIndex(words[0])] = 1;
             }
-            oneHot[wordIndex(words[0])] = 1;
             return oneHot;
         }
-
-        //multiple words
-        for (String word : words) {
-            if(word == null) {
-                continue;
+        //take the average of the one-hot vectors of the words
+        double[][] oneHot = new double[words.length][numWords];
+        for (int i = 0; i < words.length; i++) {
+            if (vocab.containsKey(words[i])) {
+                oneHot[i][wordIndex(words[i])] = 1;
             }
-            oneHot[wordIndex(word)] = 1.0 / words.length;
         }
-        return oneHot;
-
+        double[] avgOneHot = new double[numWords];
+        for (int i = 0; i < numWords; i++) {
+            double sum = 0;
+            for (int j = 0; j < words.length; j++) {
+                sum += oneHot[j][i];
+            }
+            avgOneHot[i] = sum / words.length;
+        }
+        return avgOneHot;
     }
 
     // go from a one-hot vector to a word (if there are multiple words, the one hot vector is the average of the one-hot vectors of the words, and return all the words)
