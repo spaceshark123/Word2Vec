@@ -2,6 +2,7 @@ import java.util.*;
 import java.io.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
 public class Word2Vec {
     NeuralNetwork net;
@@ -15,6 +16,9 @@ public class Word2Vec {
 
     List<double[]> inputs = null;
     List<double[]> outputs = null;
+
+    volatile int correct = 0;
+    volatile int progress = 0;
 
     public static enum ModelType {
         CBOW, SKIPGRAM
@@ -78,21 +82,30 @@ public class Word2Vec {
             generateTrainingData();
             //System.out.println("Training data size: " + inputs.size());
         }
-    
+
         // Use an atomic integer to track progress
-        int progress = 0;
-        int correct = 0;
-    
+        // int progress = 0;
+        // int correct = 0;
+
+        final ThreadLocal<double[][]> threadLocalNeurons = ThreadLocal
+                .withInitial(() -> new double[3][net.GetNeurons()[0].length]);
+        final ThreadLocal<double[][]> threadLocalNeuronsRaw = ThreadLocal
+                .withInitial(() -> new double[3][net.GetNeurons()[0].length]);
+
         // Get the size of the input data
         int size = inputs.size();
-    
-        for(int i = 0; i < size; i++) {
-            // Get the current index
+
+        progress = 0;
+        correct = 0;
+        IntStream.range(0, size).parallel().forEach(a -> {
+            // Use thread-local arrays
+				double[][] thisNeurons = threadLocalNeurons.get();
+				double[][] thisNeuronsRaw = threadLocalNeuronsRaw.get();
             int index = progress++;
             double[] input = inputs.get(index);
 
             // Calculate output and check if it's correct
-            double[] output = net.Evaluate(input);
+            double[] output = net.Evaluate(input, thisNeurons, thisNeuronsRaw);
             int maxIndex = maxIndex(output);
 
             if (maxIndex == maxIndex(outputs.get(index))) {
@@ -101,12 +114,12 @@ public class Word2Vec {
 
             // Update the progress bar
             Word2Vec.progressBar(15, "Calculating accuracy ", progress, size, "");
-        }
-    
+        });
+
         // Ensure the progress bar is fully updated
-        if(progress < size)
+        if (progress < size)
             Word2Vec.progressBar(15, "Calculating accuracy ", size, size, "");
-    
+
         // Return the calculated accuracy
         return (double) correct / size;
     }
@@ -184,6 +197,24 @@ public class Word2Vec {
         return findSimilarWords(vector, 1)[0];
     }
 
+    public String getClosestWord(double[] vector, String... exclude) {
+        double maxSim = -2;
+        String closestWord = "";
+        List<String> excludeList = Arrays.asList(exclude);
+        for (int i = 0; i < numWords; i++) {
+            String word = indexWord(i);
+            if (excludeList.contains(word)) {
+                continue;
+            }
+            double sim = similarity(vector, vector(word));
+            if (sim > maxSim) {
+                maxSim = sim;
+                closestWord = word;
+            }
+        }
+        return closestWord;
+    }
+
     // generate training data for the network
     public void generateTrainingData() {
         String[] words = corpus.split(" ");
@@ -224,7 +255,7 @@ public class Word2Vec {
     }
 
     // trains using adam optimizer with default beta1=0.9, beta2=0.999 and mini-batches (batchSize=1)
-    public void train(int epochs, double learningRate, int batchSize) {
+    public void train(int epochs, double learningRate) {
         //generate training data (input and outputs)
         if(inputs == null || outputs == null) {
             generateTrainingData();
@@ -240,7 +271,7 @@ public class Word2Vec {
         System.out.println("Training data size: " + inputs.size());
         //train the network
         NeuralNetwork.TrainingCallback callback = new ChartUpdater(epochs);
-        //int batchSize = 1;
+        int batchSize = 1;
         net.displayAccuracy = true;
         net.Train(inputs.toArray(new double[0][]), outputs.toArray(new double[0][]), testInputs, testOutputs, epochs,
                 learningRate, batchSize, "categorical_crossentropy", 0,
@@ -470,7 +501,7 @@ public class Word2Vec {
             int fillAmount = (int) Math.ceil(fill * width);
             StringBuilder bar = new StringBuilder();
             bar.append(title).append(": ").append(filled.repeat(fillAmount)).append(unfilled.repeat(width - fillAmount))
-                    .append(" ").append(current).append("/").append(total).append(" ").append(subtitle).append(" ");
+                    .append(" ").append(current).append("/").append(total).append(" ").append(subtitle).append("      ");
             if(current == total) {
                 bar.append("\n");
             } else {

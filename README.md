@@ -61,6 +61,7 @@ String[] similarWords2 = model.findSimilarWords(vector, topN);
 
 String closestWord = model.getClosestWord("word");
 String closestWord2 = model.getClosestWord(vector);
+String closestWord3 = model.getClosestWord(vector, "excludedWord1", "excludedWord2", ...);
 ```
 
 4. __Vector Arithmetic__: Perform operations like word analogies using vector arithmetic.

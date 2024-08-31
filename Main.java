@@ -72,7 +72,7 @@ public class Main {
         console.addCommand("train", new ConsoleTool.Command() {
             public void execute(String... arguments) {
                 //validate arguments
-                if (arguments.length < 2) {
+                if (arguments.length != 2) {
                     console.Output("Usage: train <epochs> <learningRate>");
                     return;
                 }
@@ -88,12 +88,8 @@ public class Main {
                     console.Output("Learning rate must be greater than 0");
                     return;
                 }
-                if(Integer.parseInt(arguments[2]) < 1) {
-                    console.Output("Batch size must be at least 1");
-                    return;
-                }
-
-                model.train(Integer.parseInt(arguments[0]), Double.parseDouble(arguments[1]), Integer.parseInt(arguments[2]));
+                
+                model.train(Integer.parseInt(arguments[0]), Double.parseDouble(arguments[1]));
                 console.Output("Model trained");
             }
         });
@@ -263,7 +259,7 @@ public class Main {
                 double[] vector1 = model.vector(arguments[0]);
                 double[] vector2 = model.vector(arguments[1]);
                 double[] result = model.add(vector1, vector2);
-                console.Output(model.getClosestWord(result));
+                console.Output(model.getClosestWord(result, arguments[0], arguments[1]));
             }
         });
         //command to subtract 2 words and get the closest word to the result
@@ -288,7 +284,7 @@ public class Main {
                 double[] vector1 = model.vector(arguments[0]);
                 double[] vector2 = model.vector(arguments[1]);
                 double[] result = model.subtract(vector1, vector2);
-                console.Output(model.getClosestWord(result));
+                console.Output(model.getClosestWord(result, arguments[0], arguments[1]));
             }
         });
         //command to get training data of the model
