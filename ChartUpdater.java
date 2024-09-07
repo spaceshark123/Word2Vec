@@ -21,6 +21,8 @@ public class ChartUpdater implements NeuralNetwork.TrainingCallback {
     private JFreeChart chart;
     private TextTitle caption;
     private int epochs;
+    int counter = 0;
+    int updateInterval = 10;
 
     public ChartUpdater(int epochs) {
         trainAccuracySeries = new XYSeries("Train Accuracy");
@@ -68,6 +70,8 @@ public class ChartUpdater implements NeuralNetwork.TrainingCallback {
         frame.pack();
         frame.setAlwaysOnTop(true);
         frame.setVisible(true);
+        chart.setNotify(false);
+        chart.setRenderingHints(new RenderingHints(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON));
     }
 
     @Override
@@ -77,9 +81,16 @@ public class ChartUpdater implements NeuralNetwork.TrainingCallback {
             testAccuracySeries.add(progress, testAccuracy);
         }
         // Update caption
-        if(epoch <= epochs) {
-            caption.setText(String.format("Current Epoch: %d, Current Batch: %d, Current Accuracy: %f%%", epoch, batch, trainAccuracy));
-            chart.fireChartChanged();
+        if (epoch <= epochs) {
+            caption.setText(String.format("Current Epoch: %d, Current Batch: %d, Current Accuracy: %f%%", epoch, batch,
+                    trainAccuracy));
         }
+        if (counter % updateInterval == 0) {
+            chart.setNotify(true);
+            chart.fireChartChanged();
+            chart.setNotify(false);
+            counter = 0;
+        }
+        counter++;
     }
 }
