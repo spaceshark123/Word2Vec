@@ -31,7 +31,7 @@ These embeddings can be used for various natural language processing tasks, such
 
 ## Internal Usage
 
-For use in your own Java projects, simply import the `Word2Vec.java` class file and it will immediately be usable. The following section covers the proper syntax for 
+For use in your own Java projects, simply import the `Word2Vec.java` class file and it will immediately be usable. The following section covers the proper syntax for:
 
 1. __Initializing Word2Vec Model__:
 
